@@ -1,9 +1,11 @@
 import collections
-import tensorflow as tf
+# import tensorflow as tf
 import re
 import numpy
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior() 
 
 try:
     import cPickle as pickle

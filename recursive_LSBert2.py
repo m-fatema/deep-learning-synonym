@@ -601,7 +601,7 @@ def preprocess_tag(tag):
         return 's' 
 
 def BERT_candidate_generation(source_word, pre_tokens, pre_scores, ps, num_selection=10):
-
+    
     cur_tokens=[]
    
     source_stem = ps.stem(source_word)
@@ -642,6 +642,15 @@ def BERT_candidate_generation(source_word, pre_tokens, pre_scores, ps, num_selec
 
 def candidate_generation(model, tokenizer, tokens, words, mask_index, positions, max_seq_length, ps, num_selections):
 
+    # print("model: ", model)
+    # print("tokenizer: ", tokenizer)
+    # print("tokens:", tokens)
+    # print("words:", words)
+    # print("mask_index:", mask_index)
+    # print("positions:", positions)
+    # print("max_seq_length:", max_seq_length)
+    # print("ps: ", ps)
+    # print("num_selections: ", num_selections)
 
     mask_position = positions[mask_index]
 
@@ -662,12 +671,14 @@ def candidate_generation(model, tokenizer, tokens, words, mask_index, positions,
 
     with torch.no_grad():
         all_attentions,prediction_scores = model(tokens_tensor, token_type_ids, attention_mask)
-
+    # print(prediction_scores,"\n----------------------all_attentions------------\n")
+    print("mask_position: ",mask_position)
     if isinstance(mask_position,list):
         predicted_top = prediction_scores[0, mask_position[0]].topk(80)
     else:
         predicted_top = prediction_scores[0, mask_position].topk(80)
-                #print(predicted_top[0].cpu().numpy())
+    # print("predicted_top[0]: ", predicted_top[0].cpu().numpy())
+    # print("predicted_top[1]: ", predicted_top[1])
     pre_tokens = tokenizer.convert_ids_to_tokens(predicted_top[1].cpu().numpy())
         
     
@@ -681,16 +692,16 @@ def recursive_simplification( model, tokenizer, ranker, sentence, tokens, positi
 
     
     sentence_object = Sentence(tokenized, threshold, ignore_list)
-
-    if (len(sentence_object.complex_words) > 0): #if there are complex words in the sentence
+    # print(" ################ sentence_object: ", sentence_object.complex_words)
+    if (len(sentence_object.complex_words) >= 0): #if there are complex words in the sentence
         
         #take the most complex word
 
         #print(sentence_object.complex_words)
-        (index,complexity), *tail = sentence_object.complex_words
-
+        # (index,complexity), *tail = sentence_object.complex_words
+        index = 1
         word_object = Word(sentence_object, index)
-        
+        # index = 5
         #create word object 
         print('originial word---------', sentence_object.tokenized[index])
         #assert words[index] == sentence_object.tokenized[index]
@@ -698,7 +709,7 @@ def recursive_simplification( model, tokenizer, ranker, sentence, tokens, positi
 
         cgBERT = candidate_generation(model, tokenizer, tokens, tokenized, index, positions, max_seq_length, ranker.ps, num_selections)
 
-        print(cgBERT[:10])
+        print(cgBERT)
 
         mask_context = extract_context(tokenized,index,11)
 
@@ -725,12 +736,12 @@ def recursive_simplification( model, tokenizer, ranker, sentence, tokens, positi
 
         synonym = [pre_word]
 
-        if synonym != []:
-            sentence_object.make_simplification(synonym, word_object.index)
-
+        # if synonym != []:
+        #    sentence_object.make_simplification(synonym, word_object.index)
+        #    print("IN RECURSIVE ****************************")
         #recursively call function
-        return recursive_simplification(model, tokenizer, ranker, sentence, tokens, positions, max_seq_length, sentence_object.tokenized,threshold, num_selections, sentence_object.ignore_index)
-    else:
+        # return recursive_simplification(model, tokenizer, ranker, sentence, tokens, positions, max_seq_length, sentence_object.tokenized,threshold, num_selections, sentence_object.ignore_index)
+   # else:
         #when no simplifications possible return the sentence
         return sentence_object.tokenized
 
@@ -746,6 +757,7 @@ def simplified_sentence(one_sent, model, tokenizer, ranker, max_seq_length=250, 
     spacy_sent = spacy_model(one_sent)
 
     for i,x in enumerate(spacy_sent):
+        print("x: ", x.ent_iob_)
         if x.ent_iob_!='O':
             ignore_list.append(i)
 
@@ -760,8 +772,13 @@ def simplified_sentence(one_sent, model, tokenizer, ranker, max_seq_length=250, 
 
     tokens, words, positions = convert_sentence_to_token(one_sent, max_seq_length, tokenizer)
 
+    print("tokens:", tokens)
+    print("words: ", words)
+    print("positions:", positions)
+    
     assert len(words)==len(positions)
-
+    print("ranker:", ranker)
+    print("ignore_list:", ignore_list)
     simpilify_sentence = recursive_simplification(model, tokenizer, ranker, one_sent, tokens, positions, max_seq_length, nltk_sent, threshold, num_selections, ignore_list)
 
     ss= " ".join(simpilify_sentence)
@@ -890,15 +907,16 @@ def main():
     #one_sent = "John composed these verses."
     output_sr_file = open(args.output_SR_file,"w")
 
-    one_sent = "alessandro mazzola -lrb- born 8 november , 1942 -rrb- is a former italian football player ."
-
+    # one_sent = "alessandro mazzola -lrb- born 8 november , 1942 -rrb- is a former italian football player ."
+    one_sent = "John composed the versus"
+    print("one_sent: ", one_sent)
     simple_sent = simplified_sentence(one_sent, model, tokenizer, ranker, args.max_seq_length, threshold=0.5, num_selections=args.num_selections )
 
     print(simple_sent)
    
-
-    with open(args.eval_dir, "r") as reader:
-        while True:
+    
+    with open(args.eval_dir, "r") as reader:        
+        while False:
             one_sent = reader.readline()
             one_sent = one_sent.strip()
 
@@ -919,11 +937,7 @@ def main():
             print(simple_sent)
             output_sr_file.write('\n')
 
-    output_sr_file.close()
-
-
-
-    
+    output_sr_file.close()    
         #output_sr_file.close()
 
 if __name__ == "__main__":

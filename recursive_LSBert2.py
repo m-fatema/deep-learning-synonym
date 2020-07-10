@@ -782,7 +782,7 @@ class Synonym:
         assert len(words)==len(positions)
         print("ranker:", ranker)
         print("ignore_list:", ignore_list)
-        simpilify_sentence = self.recursive_simplification(index, model, tokenizer, ranker, one_sent, tokens,
+        simpilify_sentence = self.recursive_simplification(msk_index, model, tokenizer, ranker, one_sent, tokens,
                                                            positions, max_seq_length, nltk_sent, threshold,
                                                            num_selections, ignore_list)
 
@@ -800,11 +800,12 @@ class Synonym:
         parser.add_argument("--eval_dir",
                             default=None,
                             type=str,
-                            required=True,
+                            # required=True,
                             help="The evaluation data dir.")
         parser.add_argument("--bert_model",
                             default="bert-large-uncased-whole-word-masking",
-                            type=str, required=True,
+                            type=str, 
+                            # required=True,
                             help="Bert pre-trained model selected in the list: bert-base-uncased, "
                             "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
                             "bert-base-multilingual-cased, bert-base-chinese.")
@@ -812,17 +813,17 @@ class Synonym:
         parser.add_argument("--output_SR_file",
                             default="./outputDir/run_LSBERT2_TS_sh.txt",
                             type=str,
-                            required=True,
+                            # required=True,
                             help="The output directory of writing substitution selection.")
         parser.add_argument("--word_embeddings",
                             default="./fastText-embeddings/crawl-300d-2M-subword.vec",
                             type=str,
-                            required=True,
+                            # required=True,
                             help="The path of word embeddings")
         parser.add_argument("--word_frequency",
                             default="./SUBTLEX_frequency.xlsx",
                             type=str,
-                            required=True,
+                            # required=True,
                             help="The path of word frequency.")
         ## Other parameters
         parser.add_argument("--cache_dir",
@@ -838,9 +839,11 @@ class Synonym:
                                  "than this will be padded.")
 
         parser.add_argument("--do_eval",
+                            default = True,
                             action='store_true',
                             help="Whether to run eval on the dev set.")
         parser.add_argument("--do_lower_case",
+                            default=True,
                             action='store_true',
                             help="Set this flag if you are using an uncased model.")
 
@@ -865,7 +868,7 @@ class Synonym:
         parser.add_argument("--ppdb",
                             default="./ppdb/ppdb-2.0-tldr",
                             type=str,
-                            required=True,
+                            # required=True,
                             help="The path of word frequency.")
         parser.add_argument("--no_cuda",
                             action='store_true',

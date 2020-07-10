@@ -710,7 +710,7 @@ class Synonym:
             #assert words[index] == sentence_object.tokenized[index]
 
 
-            cgBERT = self.candidate_generation(model, tokenizer, tokens, tokenized, index, positions, max_seq_length, ranker.ps, num_selections)
+            cgBERT = self.candidate_generation(model, tokenizer, tokens, tokenized, msk_index, positions, max_seq_length, ranker.ps, num_selections)
 
             print(cgBERT)
 
@@ -732,7 +732,7 @@ class Synonym:
             print(tokenized[index])
 
             pre_word = self.substitution_ranking(tokenized[index], mask_context, cgBERT, cgPPDB, ranker, tokenizer, model)
-            #print(rank_words)
+            # print(pre_words)
 
             print('substitute word-----------',pre_word)
 
@@ -746,7 +746,7 @@ class Synonym:
             # return recursive_simplification(model, tokenizer, ranker, sentence, tokens, positions, max_seq_length, sentence_object.tokenized,threshold, num_selections, sentence_object.ignore_index)
        # else:
             #when no simplifications possible return the sentence
-            return sentence_object.tokenized
+            return sentence_object.tokenized, pre_word, cgBERT
 
     def simplified_sentence(self, msk_index, one_sent, model, tokenizer, ranker, max_seq_length=250, threshold=0.5, num_selections=10 ):
 
@@ -782,13 +782,16 @@ class Synonym:
         assert len(words)==len(positions)
         print("ranker:", ranker)
         print("ignore_list:", ignore_list)
-        simpilify_sentence = self.recursive_simplification(msk_index, model, tokenizer, ranker, one_sent, tokens,
+        simpilify_sentence, mask, suggestions = self.recursive_simplification(msk_index, model, tokenizer, ranker, one_sent, tokens,
                                                            positions, max_seq_length, nltk_sent, threshold,
                                                            num_selections, ignore_list)
 
         ss= " ".join(simpilify_sentence)
-
-        return ss
+        print("*****************************************************")
+        print(ss)
+        print(mask)
+        print(suggestions)
+        return ss, mask, suggestions
 
 
     #def main(self):

@@ -22,13 +22,15 @@ class BaseResource(Resource):
 @api.route('/a_synonym')
 class SynonymResource(BaseResource):
 
-    @api.doc(params={'input_sentence': 'sentence to paraphrase'})
+    @api.doc(params={'input_sentence': 'sentence to paraphrase', 'mask_index': 'index of the word whose synonym is to be found'})
     def post(self):
         """
-            Get all the chunks
+            Get Synonyms
         """
 
         content = self.parser.parse_args()['input_sentence']
         mask_index = self.parser.parse_args()['mask_index']
-
-        return syn.simplified_sentence(mask_index, content, syn.model, syn.tokenizer, syn.ranker)
+        mask_index = int(mask_index)  
+        response = syn.simplified_sentence(mask_index, content, syn.model, syn.tokenizer, syn.ranker)
+        # print("In resource", response)
+        return response # syn.simplified_sentence(mask_index, content, syn.model, syn.tokenizer, syn.ranker)

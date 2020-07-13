@@ -449,7 +449,13 @@ class Synonym:
 
         ss,sis_scores,count_scores= self.preprocess_SR(source_word, substitution_selection, ranker.fasttext_dico, ranker.fasttext_emb, ranker.word_count)
 
-        #print(ss)
+        # print("ss: ", ss)
+        # print("count_scores: ", count_scores)
+        # print("source_word: ", source_word)
+        # print("source_context: ", source_context)
+        # print("substitution_selection: ", substitution_selection)
+
+        
         if len(ss)==0:
             return source_word
 
@@ -457,6 +463,9 @@ class Synonym:
             seq = sorted(sis_scores,reverse = True )
             sis_rank = [seq.index(v)+1 for v in sis_scores]
 
+        # print("sis_scores:", sis_scores)
+        # print("seq: ", seq)
+        # print("sis_rank: ", sis_rank)
         rank_count = sorted(count_scores,reverse = True )
 
         count_rank = [rank_count.index(v)+1 for v in count_scores]
@@ -482,18 +491,18 @@ class Synonym:
         else:
             all_ranks = [bert+count+LM+ppdb  for bert,count,LM,ppdb in zip(bert_rank,count_rank,lm_rank,ppdb_rank)]
         #all_ranks = [con for con in zip(context_rank)]
-
+        print("all_ranks: ", all_ranks)
         min_rank_index_list = map(all_ranks.index,heapq.nsmallest(len(all_ranks),all_ranks))
-
+        print("min_rank_index_list:>>>>", list(min_rank_index_list))
 
 
         rank_words = []
         for rank_index in list(min_rank_index_list):
             rank_words.append(ss[rank_index])
 
-
+        print("rank_words:", rank_words)
         pre_index = all_ranks.index(min(all_ranks))
-
+        # print("pre_index:", pre_index)
         #return ss[pre_index]
 
         pre_count = count_scores[pre_index]
@@ -505,9 +514,9 @@ class Synonym:
 
         pre_lm = lm_score[pre_index]
 
-        #print(lm_score)
-        #print(source_lm)
-        #print(pre_lm)
+        # print("lm_score: ", lm_score)
+        # print(source_lm)
+        # print(pre_lm)
 
 
         #pre_word = ss[pre_index]
@@ -516,8 +525,14 @@ class Synonym:
             pre_word = ss[pre_index]
         else:
             pre_word = source_word
-
-        return pre_word
+        
+        suggestion_list = list()
+        for i in range(len(all_ranks)):
+            res = dict()
+            res.update({'output':ss[i],'score': all_ranks[i]})
+            suggestion_list.append(res)
+        suggestion_list.sort(key=lambda x:x['score'])
+        return pre_word, suggestion_list
 
 
     def evaulation_SS_scores(self, ss,labels):
@@ -675,7 +690,9 @@ class Synonym:
         with torch.no_grad():
             all_attentions,prediction_scores = model(tokens_tensor, token_type_ids, attention_mask)
         # print(prediction_scores,"\n----------------------all_attentions------------\n")
-        print("mask_position: ",mask_position)
+        # print("mask_position: ",mask_position)
+        print("words:", words)
+        print("tokens: ", tokens)
         if isinstance(mask_position,list):
             predicted_top = prediction_scores[0, mask_position[0]].topk(80)
         else:
@@ -691,7 +708,7 @@ class Synonym:
         return cgBERT
 
 
-    def recursive_simplification(self, msk_index, model, tokenizer, ranker, sentence, tokens, positions, max_seq_length, tokenized, threshold = 0.5, num_selections=10, ignore_list = []):
+    def recursive_simplification(self, index, model, tokenizer, ranker, sentence, tokens, positions, max_seq_length, tokenized, threshold = 0.5, num_selections=10, ignore_list = []):
 
 
         sentence_object = Sentence(tokenized, threshold, ignore_list)
@@ -702,15 +719,14 @@ class Synonym:
 
             #print(sentence_object.complex_words)
             # (index,complexity), *tail = sentence_object.complex_words
-            index = 1
+
             word_object = Word(sentence_object, index)
-            # index = 5
             #create word object
             print('originial word---------', sentence_object.tokenized[index])
             #assert words[index] == sentence_object.tokenized[index]
 
 
-            cgBERT = self.candidate_generation(model, tokenizer, tokens, tokenized, msk_index, positions, max_seq_length, ranker.ps, num_selections)
+            cgBERT = self.candidate_generation(model, tokenizer, tokens, tokenized, index, positions, max_seq_length, ranker.ps, num_selections)
 
             print(cgBERT)
 
@@ -731,10 +747,10 @@ class Synonym:
 
             print(tokenized[index])
 
-            pre_word = self.substitution_ranking(tokenized[index], mask_context, cgBERT, cgPPDB, ranker, tokenizer, model)
+            pre_word, suggestions = self.substitution_ranking(tokenized[index], mask_context, cgBERT, cgPPDB, ranker, tokenizer, model)
             # print(pre_words)
 
-            print('substitute word-----------',pre_word)
+            # print('substitute word-----------',pre_word)
 
 
             synonym = [pre_word]
@@ -746,7 +762,7 @@ class Synonym:
             # return recursive_simplification(model, tokenizer, ranker, sentence, tokens, positions, max_seq_length, sentence_object.tokenized,threshold, num_selections, sentence_object.ignore_index)
        # else:
             #when no simplifications possible return the sentence
-            return sentence_object.tokenized, pre_word, cgBERT
+            return suggestions,sentence_object.tokenized, pre_word
 
     def simplified_sentence(self, msk_index, one_sent, model, tokenizer, ranker, max_seq_length=250, threshold=0.5, num_selections=10 ):
 
@@ -760,7 +776,7 @@ class Synonym:
         spacy_sent = spacy_model(one_sent)
 
         for i,x in enumerate(spacy_sent):
-            print("x: ", x.ent_iob_)
+            # print("x: ", x.ent_iob_)
             if x.ent_iob_!='O':
                 ignore_list.append(i)
 
@@ -772,7 +788,7 @@ class Synonym:
             #if x=="-rrb-" or x=="-lrb-":
                 #ignore_list.append(i)
 
-
+        ignore_list = []
         tokens, words, positions = self.convert_sentence_to_token(one_sent, max_seq_length, tokenizer)
 
         print("tokens:", tokens)
@@ -782,7 +798,7 @@ class Synonym:
         assert len(words)==len(positions)
         print("ranker:", ranker)
         print("ignore_list:", ignore_list)
-        simpilify_sentence, mask, suggestions = self.recursive_simplification(msk_index, model, tokenizer, ranker, one_sent, tokens,
+        suggestions, simpilify_sentence, mask = self.recursive_simplification(msk_index, model, tokenizer, ranker, one_sent, tokens,
                                                            positions, max_seq_length, nltk_sent, threshold,
                                                            num_selections, ignore_list)
 
@@ -790,8 +806,11 @@ class Synonym:
         print("*****************************************************")
         print(ss)
         print(mask)
-        print(suggestions)
-        return ss, mask, suggestions
+        print("suggestions Final: ", suggestions)
+        response_dict = dict()
+        response_dict.update({"input_sentence": one_sent, "suggestions": suggestions})
+        print("response_dict: ", response_dict)
+        return response_dict
 
 
     #def main(self):
